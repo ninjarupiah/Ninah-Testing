@@ -178,6 +178,10 @@ export class Kdf {
     wallet: { signMessage: (message: string) => Promise<string> },
     userIdentifier: string,
   ): Promise<Uint8Array> {
+    console.log('[KDF] Deriving wallet signature...');
+    console.log('[KDF] User identifier:', userIdentifier);
+    console.log('[KDF] Wallet object:', { hasSignMessage: typeof wallet.signMessage });
+
     const message = `NinjaRupiah - Secure Key Derivation
 
     This signature is used to derive your private keys.
@@ -192,7 +196,9 @@ export class Kdf {
     Version: v1.0`;
 
     try {
+      console.log('[KDF] Message to sign created, requesting signature...');
       const signature = await wallet.signMessage(message);
+      console.log('[KDF] Signature received:', signature?.substring(0, 20) + '...');
 
       const sigBytes = Uint8Array.from(
         signature
@@ -201,8 +207,11 @@ export class Kdf {
           .map((bytes) => parseInt(bytes, 16)),
       );
 
+      console.log('[KDF] Wallet signature derived successfully, length:', sigBytes.length);
+
       return sigBytes;
     } catch (error) {
+      console.error('[KDF] Failed to derive wallet signature:', error);
       throw new CryptoError(`Failed to derive wallet signature: ${error}`, 'WALLET_SIGNATURE_FAILED');
     }
   }
