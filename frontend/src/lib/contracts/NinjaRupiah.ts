@@ -71,12 +71,24 @@ export async function registerUsername(
 ) {
   const walletClient = createPrivyWalletClient(provider);
 
+  // Estimate gas first
+  const gasEstimate = await publicClient.estimateContractGas({
+    address: contractAdd,
+    abi: NinahABI,
+    functionName: 'RegisterUsername',
+    args: [usernameHash, commitment, proof],
+    account,
+  });
+
+  const gasLimit = (gasEstimate * BigInt(120)) / BigInt(100);
+
   const hash = await walletClient.writeContract({
     address: contractAdd,
     abi: NinahABI,
     functionName: 'RegisterUsername',
     args: [usernameHash, commitment, proof],
     account,
+    gas: gasLimit,
   });
 
   return await publicClient.waitForTransactionReceipt({
@@ -90,23 +102,63 @@ export async function registerMetaKeys(
   metaViewingPub: Uint8Array,
   metaSpendingPub: Uint8Array,
 ) {
+  console.log('[CONTRACT] Creating wallet client...');
+  console.log('[CONTRACT] Provider:', { hasRequest: typeof provider.request });
+
   const walletClient = createPrivyWalletClient(provider);
+  console.log('[CONTRACT] Wallet client created');
 
   // Convert Uint8Array to hex string using Bytes helper
   const viewingPubHex = Bytes.bytesToHex(metaViewingPub) as `0x${string}`;
   const spendingPubHex = Bytes.bytesToHex(metaSpendingPub) as `0x${string}`;
 
-  const hash = await walletClient.writeContract({
-    address: contractAdd,
-    abi: NinahABI,
-    functionName: 'registerMetaKeys',
-    args: [viewingPubHex, spendingPubHex],
-    account,
-  });
+  console.log('[CONTRACT] Converted public keys to hex');
+  console.log('[CONTRACT] Viewing pub hex:', viewingPubHex.substring(0, 20) + '...');
+  console.log('[CONTRACT] Spending pub hex:', spendingPubHex.substring(0, 20) + '...');
 
-  return await publicClient.waitForTransactionReceipt({
-    hash,
-  });
+  console.log('[CONTRACT] Calling writeContract for registerMetaKeys...');
+  console.log('[CONTRACT] Contract address:', contractAdd);
+  console.log('[CONTRACT] Account:', account);
+
+  try {
+    // Estimate gas first to avoid "intrinsic gas too low" error
+    console.log('[CONTRACT] Estimating gas...');
+    const gasEstimate = await publicClient.estimateContractGas({
+      address: contractAdd,
+      abi: NinahABI,
+      functionName: 'registerMetaKeys',
+      args: [viewingPubHex, spendingPubHex],
+      account,
+    });
+
+    console.log('[CONTRACT] Gas estimated:', gasEstimate.toString());
+
+    // Add 20% buffer to gas estimate for safety
+    const gasLimit = (gasEstimate * BigInt(120)) / BigInt(100);
+    console.log('[CONTRACT] Gas limit with 20% buffer:', gasLimit.toString());
+
+    const hash = await walletClient.writeContract({
+      address: contractAdd,
+      abi: NinahABI,
+      functionName: 'registerMetaKeys',
+      args: [viewingPubHex, spendingPubHex],
+      account,
+      gas: gasLimit,
+    });
+
+    console.log('[CONTRACT] Transaction sent! Hash:', hash);
+    console.log('[CONTRACT] Waiting for transaction receipt...');
+
+    const receipt = await publicClient.waitForTransactionReceipt({
+      hash,
+    });
+
+    console.log('[CONTRACT] Transaction confirmed!');
+    return receipt;
+  } catch (error) {
+    console.error('[CONTRACT] Error in registerMetaKeys:', error);
+    throw error;
+  }
 }
 
 export async function sendToStealth(
