@@ -44,8 +44,42 @@ export function encodeProofForContract(
   vkey: `0x${string}`,
   publicValues: `0x${string}`,
   proof: `0x${string}`,
+): `0x${string}`;
+
+/**
+ * Overload: Accept proof response object
+ */
+export function encodeProofForContract(
+  proofResponse: UsernameProofResponse | { vkey: `0x${string}`; public_values: `0x${string}`; proof: `0x${string}` },
+): `0x${string}`;
+
+// Implementation
+export function encodeProofForContract(
+  vkeyOrProof:
+    | `0x${string}`
+    | UsernameProofResponse
+    | { vkey: `0x${string}`; public_values: `0x${string}`; proof: `0x${string}` },
+  publicValues?: `0x${string}`,
+  proof?: `0x${string}`,
 ): `0x${string}` {
-  return encodeAbiParameters(parseAbiParameters('bytes32, bytes, bytes'), [vkey as `0x${string}`, publicValues, proof]);
+  // Handle both calling conventions
+  let vkey: `0x${string}`;
+  let pubVals: `0x${string}`;
+  let proofBytes: `0x${string}`;
+
+  if (typeof vkeyOrProof === 'object') {
+    // Object parameter style
+    vkey = vkeyOrProof.vkey;
+    pubVals = vkeyOrProof.public_values;
+    proofBytes = vkeyOrProof.proof;
+  } else {
+    // Individual parameters style
+    vkey = vkeyOrProof;
+    pubVals = publicValues!;
+    proofBytes = proof!;
+  }
+
+  return encodeAbiParameters(parseAbiParameters('bytes32, bytes, bytes'), [vkey, pubVals, proofBytes]);
 }
 
 export interface ClaimingProofRequest {
@@ -74,23 +108,57 @@ export async function generateUsernameProof(
   username: string,
   wallet: string,
   secret: Uint8Array,
-): Promise<UsernameProofResponse> {
+): Promise<UsernameProofResponse>;
+
+/**
+ * Overload: Accept object parameter and auto-generate secret
+ */
+export async function generateUsernameProof(params: {
+  username: string;
+  wallet: string;
+}): Promise<{ public_values: `0x${string}`; vkey: `0x${string}`; proof: `0x${string}`; commitment: `0x${string}` }>;
+
+// Implementation
+export async function generateUsernameProof(
+  usernameOrParams: string | { username: string; wallet: string },
+  wallet?: string,
+  secret?: Uint8Array,
+): Promise<
+  | UsernameProofResponse
+  | { public_values: `0x${string}`; vkey: `0x${string}`; proof: `0x${string}`; commitment: `0x${string}` }
+> {
+  // Handle both calling conventions
+  let username: string;
+  let walletAddress: string;
+  let secretBytes: Uint8Array;
+
+  if (typeof usernameOrParams === 'object') {
+    // Object parameter style
+    username = usernameOrParams.username;
+    walletAddress = usernameOrParams.wallet;
+    // Generate random secret
+    secretBytes = crypto.getRandomValues(new Uint8Array(32));
+  } else {
+    // Individual parameters style
+    username = usernameOrParams;
+    walletAddress = wallet!;
+    secretBytes = secret!;
+  }
+
   // Calculate username hash (same as contract does)
   const usernameHash = keccak256(toBytes(username));
 
   // Calculate commitment: keccak256(username_hash, wallet, secret)
   const commitment = keccak256(
-    encodeAbiParameters(
-      parseAbiParameters('bytes32, address, bytes32'),
-      [usernameHash, wallet as `0x${string}`, Bytes.bytesToHex(secret) as `0x${string}`]
-    )
+    encodeAbiParameters(parseAbiParameters('bytes32, address, bytes32'), [
+      usernameHash,
+      walletAddress as `0x${string}`,
+      Bytes.bytesToHex(secretBytes) as `0x${string}`,
+    ]),
   );
 
   // Encode public values: (username_hash, commitment)
-  const publicValues = encodeAbiParameters(
-    parseAbiParameters('bytes32, bytes32'),
-    [usernameHash, commitment]
-  );
+  const publicValues = encodeAbiParameters(parseAbiParameters('bytes32, bytes32'), [usernameHash, commitment]);
 
   // Mock vkey (can be any bytes32, MockSP1Verifier doesn't check it)
   const vkey = '0x0000000000000000000000000000000000000000000000000000000000000001' as `0x${string}`;
@@ -99,8 +167,19 @@ export async function generateUsernameProof(
   const proof = '0x1234567890abcdef' as `0x${string}`;
 
   // Simulate small delay to mimic network request
-  await new Promise(resolve => setTimeout(resolve, 100));
+  await new Promise((resolve) => setTimeout(resolve, 100));
 
+  // Return with commitment for object style
+  if (typeof usernameOrParams === 'object') {
+    return {
+      public_values: publicValues as `0x${string}`,
+      vkey,
+      proof,
+      commitment,
+    };
+  }
+
+  // Return standard response for parameter style
   return {
     public_values: publicValues as `0x${string}`,
     vkey,
@@ -147,14 +226,15 @@ export async function generateClaimingProof(
   // Here we just return a placeholder - the hook should call encodeClaimingProofForContract
 
   // Simulate small delay
-  await new Promise(resolve => setTimeout(resolve, 100));
+  await new Promise((resolve) => setTimeout(resolve, 100));
 
   // Return a minimal proof - the actual encoding happens in encodeClaimingProofForContract
   return {
-    proof: encodeAbiParameters(
-      parseAbiParameters('bytes32, bytes, bytes'),
-      [vkey, '0x' as `0x${string}`, proofBytes]
-    ) as `0x${string}`,
+    proof: encodeAbiParameters(parseAbiParameters('bytes32, bytes, bytes'), [
+      vkey,
+      '0x' as `0x${string}`,
+      proofBytes,
+    ]) as `0x${string}`,
   };
 }
 
@@ -177,17 +257,19 @@ export function encodeClaimingProofForContract(
   const vkey = '0x0000000000000000000000000000000000000000000000000000000000000001' as `0x${string}`;
 
   // Encode public values: (stealth_address, ephemeral_hash, claimer_address)
-  const publicValues = encodeAbiParameters(
-    parseAbiParameters('address, bytes32, address'),
-    [stealthAddress, ephemeralPubkeyHash, claimerAddress]
-  );
+  const publicValues = encodeAbiParameters(parseAbiParameters('address, bytes32, address'), [
+    stealthAddress,
+    ephemeralPubkeyHash,
+    claimerAddress,
+  ]);
 
   // Mock proof bytes
   const proofBytes = '0xabcdef1234567890' as `0x${string}`;
 
   // Encode full proof: (vkey, publicValues, proofBytes)
-  return encodeAbiParameters(
-    parseAbiParameters('bytes32, bytes, bytes'),
-    [vkey, publicValues, proofBytes]
-  ) as `0x${string}`;
+  return encodeAbiParameters(parseAbiParameters('bytes32, bytes, bytes'), [
+    vkey,
+    publicValues,
+    proofBytes,
+  ]) as `0x${string}`;
 }
