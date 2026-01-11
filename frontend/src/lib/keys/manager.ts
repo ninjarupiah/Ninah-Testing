@@ -128,7 +128,6 @@ export class KeyManager {
         authMethod,
         keys,
       };
-
     } catch (error) {
       this.lock();
       if (error instanceof KeyError) {
@@ -210,8 +209,6 @@ export class KeyManager {
       throw new KeyError(`Failed to unlock keys: ${error}`, ERROR_CODES.AUTH_INVALID_PASSWORD);
     }
   }
-
-
 
   /**
    * Lock keys and wipe from memory
