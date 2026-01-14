@@ -74,6 +74,7 @@ interface StealthPaymentsState {
   stats: {
     totalTransactions: number;
     totalReceived: string;
+    totalSent: string;
     totalClaimed: string;
     totalUnclaimed: string;
   };
@@ -98,6 +99,7 @@ export function useStealthPayments(walletAddress: `0x${string}` | undefined) {
     stats: {
       totalTransactions: 0,
       totalReceived: '0',
+      totalSent: '0',
       totalClaimed: '0',
       totalUnclaimed: '0',
     },
@@ -114,6 +116,7 @@ export function useStealthPayments(walletAddress: `0x${string}` | undefined) {
         stats: {
           totalTransactions: 0,
           totalReceived: '0',
+          totalSent: '0',
           totalClaimed: '0',
           totalUnclaimed: '0',
         },
@@ -174,6 +177,40 @@ export function useStealthPayments(walletAddress: `0x${string}` | undefined) {
       // Process each event
       for (const log of logs) {
         try {
+          const senderAddress = (log.args.sender as string).toLowerCase();
+          const currentWallet = walletAddress.toLowerCase();
+
+          // Check if this is a SENT transaction (we are the sender)
+          if (senderAddress === currentWallet) {
+            console.log('[SCAN] Found SENT payment from us:', log.args.stealthAddress);
+
+            // Get the block for timestamp
+            const block = await publicClient.getBlock({ blockNumber: log.blockNumber });
+
+            // Get payment status from contract
+            const paymentData = (await publicClient.readContract({
+              address: contractAddress.NinahContractAddress as `0x${string}`,
+              abi: NinahABI,
+              functionName: 'getStealthPayment',
+              args: [log.args.stealthAddress],
+            })) as { amount: bigint; claimed: boolean; sender: `0x${string}`; timestamp: bigint };
+
+            myPayments.push({
+              id: `${log.transactionHash}-${log.logIndex}-sent`,
+              type: 'sent',
+              stealthAddress: log.args.stealthAddress as `0x${string}`,
+              amount: formatUnits(log.args.amount as bigint, 6),
+              rawAmount: log.args.amount as bigint,
+              timestamp: Number(block.timestamp),
+              status: paymentData.claimed ? 'claimed' : 'completed',
+              sender: log.args.sender as `0x${string}`,
+              txHash: log.transactionHash,
+              ephemeralPubkey: '0x' as `0x${string}`,
+            });
+
+            continue; // Skip to next log, don't check if it's for us
+          }
+
           // Get the transaction to decode calldata
           const tx = await publicClient.getTransaction({ hash: log.transactionHash });
 
@@ -380,15 +417,20 @@ export function useStealthPayments(walletAddress: `0x${string}` | undefined) {
 
       // Calculate stats
       let totalReceived = BigInt(0);
+      let totalSent = BigInt(0);
       let totalClaimed = BigInt(0);
       let totalUnclaimed = BigInt(0);
 
       for (const payment of myPayments) {
-        totalReceived += payment.rawAmount;
-        if (payment.status === 'claimed') {
-          totalClaimed += payment.rawAmount;
+        if (payment.type === 'sent') {
+          totalSent += payment.rawAmount;
         } else {
-          totalUnclaimed += payment.rawAmount;
+          totalReceived += payment.rawAmount;
+          if (payment.status === 'claimed') {
+            totalClaimed += payment.rawAmount;
+          } else {
+            totalUnclaimed += payment.rawAmount;
+          }
         }
       }
 
@@ -401,6 +443,7 @@ export function useStealthPayments(walletAddress: `0x${string}` | undefined) {
         stats: {
           totalTransactions: myPayments.length,
           totalReceived: formatUnits(totalReceived, 6),
+          totalSent: formatUnits(totalSent, 6),
           totalClaimed: formatUnits(totalClaimed, 6),
           totalUnclaimed: formatUnits(totalUnclaimed, 6),
         },
