@@ -6,8 +6,6 @@ import { Button } from '@/components/ui/button';
 import {
   IconCopy,
   IconQrcode,
-  IconRefresh,
-  IconShieldCheck,
   IconAlertCircle,
   IconCheck,
   IconSearch,
@@ -43,7 +41,7 @@ export default function ReceivePage() {
 
   // Fetch incoming stealth payments
   const {
-    transactions,
+    transactions: allTransactions,
     loading: paymentsLoading,
     scanning,
     keysLocked,
@@ -51,6 +49,9 @@ export default function ReceivePage() {
     refetch: scanPayments,
     error: paymentsError,
   } = useStealthPayments(walletAddress);
+
+  // Filter to only show received payments on this page
+  const transactions = allTransactions.filter((tx) => tx.type === 'received');
 
   const [copiedType, setCopiedType] = useState<'stealth' | 'username' | 'wallet' | null>(null);
 
@@ -136,73 +137,6 @@ export default function ReceivePage() {
         </p>
 
         <div className='grid grid-cols-1 lg:grid-cols-2 gap-6'>
-          {/* Stealth Address Card */}
-          <Card className='p-6'>
-            <div className='flex items-center justify-between mb-4'>
-              <h2 className='text-xl font-bold text-neutral-800 dark:text-neutral-100 font-grotesk'>Stealth Address</h2>
-              <div className='px-3 py-1 bg-green-100 dark:bg-green-900/30 rounded-full'>
-                <span className='text-xs font-medium text-green-700 dark:text-green-400 flex items-center gap-1 font-poppins'>
-                  <IconShieldCheck className='h-3 w-3' />
-                  Private
-                </span>
-              </div>
-            </div>
-
-            <p className='text-sm text-neutral-600 dark:text-neutral-400 mb-6 font-poppins'>
-              One-time address for maximum privacy. Generate a new address for each transaction.
-            </p>
-
-            {/* QR Code Placeholder */}
-            <div className='bg-white p-8 rounded-lg mb-6 flex items-center justify-center border-2 border-neutral-200 dark:border-neutral-700'>
-              <div className='h-48 w-48 bg-neutral-100 dark:bg-neutral-800 rounded-lg flex items-center justify-center'>
-                <IconQrcode className='h-24 w-24 text-neutral-400' />
-              </div>
-            </div>
-
-            {/* Stealth Address */}
-            {isKeysLoading ? (
-              <div className='bg-neutral-100 dark:bg-neutral-800 p-4 rounded-lg mb-4 animate-pulse'>
-                <div className='h-4 bg-neutral-200 dark:bg-neutral-700 rounded w-32 mb-2' />
-                <div className='h-4 bg-neutral-200 dark:bg-neutral-700 rounded w-full' />
-              </div>
-            ) : !hasKeys ? (
-              <div className='bg-yellow-50 dark:bg-yellow-900/20 p-6 rounded-lg mb-4 border border-yellow-200 dark:border-yellow-800'>
-                <div className='flex items-start gap-3'>
-                  <IconAlertCircle className='h-5 w-5 text-yellow-600 dark:text-yellow-400 flex-shrink-0 mt-0.5' />
-                  <div>
-                    <p className='text-sm font-medium text-yellow-800 dark:text-yellow-200 mb-1 font-poppins'>
-                      Meta Keys Not Registered
-                    </p>
-                    <p className='text-xs text-yellow-700 dark:text-yellow-300 font-poppins'>
-                      Register your meta keys to receive private payments via stealth addresses.
-                    </p>
-                  </div>
-                </div>
-              </div>
-            ) : (
-              <div className='bg-neutral-100 dark:bg-neutral-800 p-4 rounded-lg mb-4'>
-                <p className='text-xs text-neutral-600 dark:text-neutral-400 mb-2 font-poppins'>Your stealth address</p>
-                <p className='text-sm font-mono text-neutral-800 dark:text-neutral-100 break-all'>{stealthAddress}</p>
-              </div>
-            )}
-
-            {/* Action Buttons */}
-            <div className='flex gap-3'>
-              <Button
-                variant='outline'
-                className='flex-1 font-poppins'
-                onClick={() => stealthAddress && copyToClipboard(stealthAddress, 'stealth')}
-                disabled={!hasKeys || isKeysLoading}>
-                <IconCopy className='h-4 w-4 mr-2' />
-                {copiedType === 'stealth' ? 'Copied!' : 'Copy Address'}
-              </Button>
-              <Button variant='outline' className='flex-1 font-poppins' disabled={!hasKeys || isKeysLoading}>
-                <IconRefresh className='h-4 w-4 mr-2' />
-                Generate New
-              </Button>
-            </div>
-          </Card>
-
           {/* Username Card */}
           <Card className='p-6'>
             <div className='flex items-center justify-between mb-4'>
@@ -310,6 +244,58 @@ export default function ReceivePage() {
               </Button>
             </div>
           </Card>
+
+          {/* Wallet Address Card */}
+          <Card className='p-6'>
+            <div className='flex items-center justify-between mb-4'>
+              <h2 className='text-xl font-bold text-neutral-800 dark:text-neutral-100 font-grotesk'>Wallet Address</h2>
+              <div className='px-3 py-1 bg-neutral-100 dark:bg-neutral-800 rounded-full'>
+                <span className='text-xs font-medium text-neutral-600 dark:text-neutral-400 font-poppins'>
+                  Standard
+                </span>
+              </div>
+            </div>
+
+            <p className='text-sm text-neutral-600 dark:text-neutral-400 mb-6 font-poppins'>
+              Your standard Ethereum address. For maximum privacy, use your username instead.
+            </p>
+
+            {/* QR Code Placeholder */}
+            <div className='bg-white p-8 rounded-lg mb-6 flex items-center justify-center border-2 border-neutral-200 dark:border-neutral-700'>
+              <div className='h-48 w-48 bg-neutral-100 dark:bg-neutral-800 rounded-lg flex items-center justify-center'>
+                <IconQrcode className='h-24 w-24 text-neutral-400' />
+              </div>
+            </div>
+
+            {/* Wallet Address Display */}
+            {isWalletLoading ? (
+              <div className='bg-neutral-100 dark:bg-neutral-800 p-4 rounded-lg mb-4 animate-pulse'>
+                <div className='h-3 bg-neutral-200 dark:bg-neutral-700 rounded w-24 mb-2' />
+                <div className='h-4 bg-neutral-200 dark:bg-neutral-700 rounded w-full' />
+              </div>
+            ) : (
+              <div className='bg-neutral-100 dark:bg-neutral-800 p-4 rounded-lg mb-4'>
+                <p className='text-xs text-neutral-600 dark:text-neutral-400 mb-2 font-poppins'>Your wallet address</p>
+                <p className='text-sm font-mono text-neutral-800 dark:text-neutral-100 break-all'>{walletAddress}</p>
+              </div>
+            )}
+
+            {/* Action Buttons */}
+            <div className='flex gap-3'>
+              <Button
+                variant='outline'
+                className='flex-1 font-poppins'
+                onClick={() => walletAddress && copyToClipboard(walletAddress, 'wallet')}
+                disabled={isWalletLoading}>
+                <IconCopy className='h-4 w-4 mr-2' />
+                {copiedType === 'wallet' ? 'Copied!' : 'Copy Address'}
+              </Button>
+              <Button variant='outline' className='flex-1 font-poppins' disabled={isWalletLoading}>
+                <IconQrcode className='h-4 w-4 mr-2' />
+                Share QR
+              </Button>
+            </div>
+          </Card>
         </div>
 
         {/* Incoming Payments Section */}
@@ -326,7 +312,7 @@ export default function ReceivePage() {
             <Button onClick={scanPayments} disabled={keysLocked || scanning} className='font-poppins'>
               {scanning ? (
                 <>
-                  <IconSearch className='h-4 w-4 mr-2 animate-spin' />
+                  <IconSearch className='h-4 w-4 mr-2' />
                   Scanning...
                 </>
               ) : (
@@ -432,7 +418,7 @@ export default function ReceivePage() {
                       </div>
                       <div>
                         <p className='text-sm font-medium text-neutral-800 dark:text-neutral-100 font-poppins'>
-                          Received from {truncateAddress(payment.sender)}
+                          Received from Someone
                         </p>
                         <p className='text-xs text-neutral-600 dark:text-neutral-400 font-poppins'>
                           {formatDate(payment.timestamp)} • Stealth: {truncateAddress(payment.stealthAddress)}
@@ -478,70 +464,6 @@ export default function ReceivePage() {
               </p>
             </div>
           )}
-        </Card>
-
-        {/* Wallet Address Card */}
-        {walletAddress && (
-          <Card className='p-6 mt-6 bg-neutral-50 dark:bg-neutral-800/50'>
-            <h3 className='text-lg font-bold text-neutral-800 dark:text-neutral-100 mb-4 font-grotesk'>
-              Regular Wallet Address
-            </h3>
-            <p className='text-sm text-neutral-600 dark:text-neutral-400 mb-4 font-poppins'>
-              Standard Ethereum address. For maximum privacy, use stealth addresses or your username instead.
-            </p>
-            <div className='bg-neutral-100 dark:bg-neutral-800 p-4 rounded-lg mb-4'>
-              <p className='text-xs text-neutral-600 dark:text-neutral-400 mb-2 font-poppins'>Your wallet address</p>
-              <p className='text-sm font-mono text-neutral-800 dark:text-neutral-100 break-all'>{walletAddress}</p>
-            </div>
-            <Button
-              variant='outline'
-              className='w-full font-poppins'
-              onClick={() => walletAddress && copyToClipboard(walletAddress, 'wallet')}>
-              <IconCopy className='h-4 w-4 mr-2' />
-              {copiedType === 'wallet' ? 'Copied!' : 'Copy Wallet Address'}
-            </Button>
-          </Card>
-        )}
-
-        {/* Info Card */}
-        <Card className='p-6 mt-6 bg-blue-50 dark:bg-blue-900/10 border-blue-200 dark:border-blue-800'>
-          <h3 className='text-lg font-bold text-blue-900 dark:text-blue-100 mb-3 font-grotesk'>How Receiving Works</h3>
-          <div className='space-y-2'>
-            <div className='flex items-start gap-3'>
-              <div className='mt-1 h-5 w-5 rounded-full bg-blue-200 dark:bg-blue-800 flex items-center justify-center flex-shrink-0'>
-                <span className='text-xs font-bold text-blue-700 dark:text-blue-300'>1</span>
-              </div>
-              <p className='text-sm text-blue-800 dark:text-blue-200 font-poppins'>
-                <strong>Stealth Address:</strong> Generate a new one-time address for each transaction to maximize
-                privacy
-              </p>
-            </div>
-            <div className='flex items-start gap-3'>
-              <div className='mt-1 h-5 w-5 rounded-full bg-blue-200 dark:bg-blue-800 flex items-center justify-center flex-shrink-0'>
-                <span className='text-xs font-bold text-blue-700 dark:text-blue-300'>2</span>
-              </div>
-              <p className='text-sm text-blue-800 dark:text-blue-200 font-poppins'>
-                <strong>Username:</strong> Share your @username for easy payments. We automatically handle stealth
-                addresses
-              </p>
-            </div>
-            <div className='flex items-start gap-3'>
-              <div className='mt-1 h-5 w-5 rounded-full bg-blue-200 dark:bg-blue-800 flex items-center justify-center flex-shrink-0'>
-                <span className='text-xs font-bold text-blue-700 dark:text-blue-300'>3</span>
-              </div>
-              <p className='text-sm text-blue-800 dark:text-blue-200 font-poppins'>
-                <strong>Scan for Payments:</strong> Use your viewing key to detect incoming stealth payments on-chain
-              </p>
-            </div>
-            <div className='flex items-start gap-3'>
-              <div className='mt-1 h-5 w-5 rounded-full bg-blue-200 dark:bg-blue-800 flex items-center justify-center flex-shrink-0'>
-                <span className='text-xs font-bold text-blue-700 dark:text-blue-300'>4</span>
-              </div>
-              <p className='text-sm text-blue-800 dark:text-blue-200 font-poppins'>
-                <strong>Claim:</strong> Use ZK proofs to claim payments to your wallet without revealing the link
-              </p>
-            </div>
-          </div>
         </Card>
       </div>
     </div>
