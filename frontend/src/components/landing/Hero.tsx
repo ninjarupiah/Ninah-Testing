@@ -56,12 +56,12 @@ export default function Hero({ navItems, className = '' }: HeroProps) {
         className='relative z-10 flex flex-col items-center justify-center min-h-screen px-4 pt-32 pb-20'>
         {/* Main Title with Space Grotesk */}
         <h1 className='text-4xl md:text-5xl lg:text-6xl font-bold text-center mb-8 text-foreground leading-tight font-grotesk'>
-          Send Rupiah without being watched
+          Send Stablecoin without being watched
         </h1>
 
         {/* Subtitle with Poppins */}
         <p className='text-lg md:text-xl lg:text-2xl text-muted-foreground text-center max-w-3xl mb-12 leading-relaxed font-poppins'>
-          Private IDRX payments on Base. No KYC, no tracking, just you and the recipient.
+          Private Stablecoin payments on Base. No KYC, no tracking, just you and the recipient.
         </p>
 
         {/* CTA with Glare Hover */}
