@@ -18,6 +18,9 @@ const spaceGrotesk = Space_Grotesk({
 export const metadata: Metadata = {
   title: 'ninah',
   description: 'Private Payment For Rupiah',
+  other: {
+    'base:app_id': '6969328a8b0e0e7315e206fd',
+  },
 };
 
 export default function RootLayout({
