@@ -15,13 +15,31 @@ const spaceGrotesk = Space_Grotesk({
   subsets: ['latin'],
 });
 
-export const metadata: Metadata = {
-  title: 'ninah',
-  description: 'Private Payment For Rupiah',
-  other: {
-    'base:app_id': '6969328a8b0e0e7315e206fd',
-  },
-};
+const APP_URL = process.env.NEXT_PUBLIC_URL || 'https://ninah-testing.vercel.app';
+
+export async function generateMetadata(): Promise<Metadata> {
+  return {
+    title: 'ninah',
+    description: 'Private Payment For Rupiah',
+    other: {
+      'base:app_id': '6969328a8b0e0e7315e206fd',
+      'fc:miniapp': JSON.stringify({
+        version: 'next',
+        imageUrl: `${APP_URL}/ninah-logo.svg`,
+        button: {
+          title: 'Launch Ninah',
+          action: {
+            type: 'launch_miniapp',
+            name: 'Ninah',
+            url: APP_URL,
+            splashImageUrl: `${APP_URL}/ninah-logo.svg`,
+            splashBackgroundColor: '#000000',
+          },
+        },
+      }),
+    },
+  };
+}
 
 export default function RootLayout({
   children,
